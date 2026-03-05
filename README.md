@@ -8,8 +8,7 @@ Bu repo, BerryBot'un IR kumanda ile manuel ve otonom modlarda kontrol edilmesini
 
 - `main.py`: Ana çalışma dosyası (IR/BLE modları, Raider/Follow/Guard/Sumo davranışları)
 - `berrybot.py`: Donanım sürücüleri (motor, IR, LED matrix, WS2812, sensörler)
-- `remote.py`, `remote_test.py`: Kumanda ile ilgili yardımcı/test dosyaları
-- `ObstacleAvoidance.py`: Engel kaçınma ile ilgili ek kod
+- `CHANGELOG.md`: Sürüm geçmişi ve önemli değişiklikler
 
 ## Özellikler
 
