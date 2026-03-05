@@ -30,6 +30,12 @@ Bu repo, BerryBot'un IR kumanda ile manuel ve otonom modlarda kontrol edilmesini
 
 ## IR Tuşları (özet)
 
+- `1`: Sola dönüş (sesli dönüş rutini)
+- `2`: Önde engel görene kadar ileri gitme rutini
+- `3`: Sağa dönüş (sesli dönüş rutini)
+- `4`: Kalp ikonu + kısa ses efekti
+- `5`: Geri gitme rutini (sensör kontrollü erken durma)
+- `6`: Üzgün ikon + kısa ses efekti
 - `0`: Raider Mode ON/OFF
 - `7`: Follow Mode ON/OFF
 - `8`: Sumo Mode ON/OFF
