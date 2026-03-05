@@ -36,6 +36,7 @@ LEFT =  4
 Max_Speed = 65000
 Mid_Speed = 50000
 Low_Speed = 47000
+ProMaxSpeed = 75000
 
 TRACKER_THRESHOLD = 50000
 LDR_THRESHOLD = 250
@@ -67,6 +68,12 @@ sumo_mode_active = False
 obstacle_mode_active = False
 flow_mode_active = False
 guard_mode_active = False
+crazy_mode_active = False
+music_mode_active = False
+music_mode_last_activity_ms = 0
+crazy_step = 0
+crazy_step_end_ms = 0
+crazy_turn_side = LEFT
 obstacle_turn_direction = RIGHT
 obstacle_turn_end_ms = 0
 obstacle_state = STOP
@@ -75,6 +82,9 @@ OBSTACLE_TOGGLE_COOLDOWN_MS = 550
 RAIDER_REPEAT_OFF_MIN_MS = 900
 raider_mode_started_ms = 0
 RAIDER_MODE_NAME = "Raider Mode"
+CRAZY_REPEAT_OFF_MIN_MS = 900
+crazy_mode_started_ms = 0
+MUSIC_MODE_IDLE_TIMEOUT_MS = 120000
 BUTTON_DEBOUNCE_MS = 250
 button_last_irq_ms = 0
 BUTTON_MIN_PRESS_MS = 30
@@ -147,6 +157,19 @@ triangle =  [0x1F,0x11,0x11,0x0A,0x04]
 shield =    [0x04,0x0E,0x1F,0x1B,0x0E]
 follow =    [0x0E,0x11,0x0A,0x11,0x0E]
 idle =      [0x00,0x0A,0x04,0x0A,0x00]
+crazy =     [0x15,0x0A,0x15,0x0A,0x15]
+music =     [0x04,0x06,0x05,0x04,0x0C]
+digit_0 =   [0x0E,0x11,0x11,0x11,0x0E]
+digit_1 =   [0x04,0x0C,0x04,0x04,0x0E]
+digit_2 =   [0x0E,0x11,0x02,0x04,0x1F]
+digit_3 =   [0x1F,0x02,0x0C,0x02,0x1F]
+digit_4 =   [0x02,0x06,0x0A,0x1F,0x02]
+digit_5 =   [0x1F,0x10,0x1E,0x01,0x1E]
+digit_6 =   [0x0E,0x10,0x1E,0x11,0x0E]
+digit_7 =   [0x1F,0x01,0x02,0x04,0x04]
+digit_8 =   [0x0E,0x11,0x0E,0x11,0x0E]
+digit_9 =   [0x0E,0x11,0x0F,0x01,0x0E]
+digit_icons = [digit_0, digit_1, digit_2, digit_3, digit_4, digit_5, digit_6, digit_7, digit_8, digit_9]
 ##########Pin Initialization##########
 uart = UART(0, 115200, parity=None, stop = 1, bits = 8, tx=Pin(0), rx=Pin(1),timeout=10)
 ble = BLE(uart)
@@ -571,6 +594,7 @@ def raider_mode_step():
         motor.move(FWD, Max_Speed)
         matrix.draw_screen(forward)
         obstacle_state = FWD
+        obstacle_turn_end_ms = time.ticks_add(now, 3000)  # 3 saniye devam et
 
         if raider_last_move == FWD:
             raider_same_dir_count += 1
@@ -757,7 +781,158 @@ def guard_mode_step():
     else:
         matrix.draw_screen(shield)
         guard_action_end_ms = time.ticks_add(now, 120)
-    
+
+def crazy_mode_step():
+    global crazy_mode_active, crazy_step, crazy_step_end_ms, crazy_turn_side
+
+    if not crazy_mode_active:
+        return
+
+    feed_watchdog()
+    now = time.ticks_ms()
+
+    # Check if current step is still executing
+    if time.ticks_diff(crazy_step_end_ms, now) > 0:
+        return
+
+    # Step complete - advance to next step
+    if crazy_step == 0:
+        # Step 0: Forward 1 second
+        motor.move(FWD, Max_Speed)
+        matrix.draw_screen(forward)
+        berry_horn(100)
+        crazy_step_end_ms = time.ticks_add(now, 1000)
+        crazy_step = 1
+
+    # Backup sequence: RIGHT-LEFT-BWD repeated 3 times (steps 1-9)
+    elif crazy_step == 1:
+        # Turn RIGHT (600ms) - iteration 1
+        motor.move(RIGHT, Mid_Speed)
+        matrix.draw_screen(right)
+        berry_horn(300)
+        crazy_step_end_ms = time.ticks_add(now, 600)
+        crazy_step = 2
+
+    elif crazy_step == 2:
+        # Turn LEFT (600ms) - iteration 1
+        motor.move(LEFT, Mid_Speed)
+        matrix.draw_screen(left)
+        berry_horn(200)
+        crazy_step_end_ms = time.ticks_add(now, 600)
+        crazy_step = 3
+
+    elif crazy_step == 3:
+        # Backward (800ms) - iteration 1
+        motor.move(BWD, Mid_Speed)
+        matrix.draw_screen(backward)
+        berry_horn(400)
+        crazy_step_end_ms = time.ticks_add(now, 800)
+        crazy_step = 4
+
+    elif crazy_step == 4:
+        # Turn RIGHT (600ms) - iteration 2
+        motor.move(RIGHT, Mid_Speed)
+        matrix.draw_screen(right)
+        berry_horn(300)
+        crazy_step_end_ms = time.ticks_add(now, 600)
+        crazy_step = 5
+
+    elif crazy_step == 5:
+        # Turn LEFT (600ms) - iteration 2
+        motor.move(LEFT, Mid_Speed)
+        matrix.draw_screen(left)
+        berry_horn(200)
+        crazy_step_end_ms = time.ticks_add(now, 600)
+        crazy_step = 6
+
+    elif crazy_step == 6:
+        # Backward (800ms) - iteration 2
+        motor.move(BWD, Mid_Speed)
+        matrix.draw_screen(backward)
+        berry_horn(400)
+        crazy_step_end_ms = time.ticks_add(now, 800)
+        crazy_step = 7
+
+    elif crazy_step == 7:
+        # Turn RIGHT (600ms) - iteration 3
+        motor.move(RIGHT, Mid_Speed)
+        matrix.draw_screen(right)
+        berry_horn(300)
+        crazy_step_end_ms = time.ticks_add(now, 600)
+        crazy_step = 8
+
+    elif crazy_step == 8:
+        # Turn LEFT (600ms) - iteration 3
+        motor.move(LEFT, Mid_Speed)
+        matrix.draw_screen(left)
+        berry_horn(200)
+        crazy_step_end_ms = time.ticks_add(now, 600)
+        crazy_step = 9
+
+    elif crazy_step == 9:
+        # Backward (800ms) - iteration 3
+        motor.move(BWD, Mid_Speed)
+        matrix.draw_screen(backward)
+        berry_horn(400)
+        crazy_step_end_ms = time.ticks_add(now, 800)
+        crazy_step = 10
+
+    # Forward burst sequence with ProMaxSpeed (steps 10-14)
+    elif crazy_step == 10:
+        # Burst 1 (500ms at ProMaxSpeed)
+        motor.move(FWD, ProMaxSpeed)
+        matrix.draw_screen(forward)
+        crazy_step_end_ms = time.ticks_add(now, 500)
+        crazy_step = 11
+
+    elif crazy_step == 11:
+        # Pause between bursts (500ms)
+        motor.move(STOP, 0)
+        crazy_step_end_ms = time.ticks_add(now, 500)
+        crazy_step = 12
+
+    elif crazy_step == 12:
+        # Burst 2 (500ms at ProMaxSpeed)
+        motor.move(FWD, ProMaxSpeed)
+        matrix.draw_screen(forward)
+        crazy_step_end_ms = time.ticks_add(now, 500)
+        crazy_step = 13
+
+    elif crazy_step == 13:
+        # Pause between bursts (500ms)
+        motor.move(STOP, 0)
+        crazy_step_end_ms = time.ticks_add(now, 500)
+        crazy_step = 14
+
+    elif crazy_step == 14:
+        # Burst 3 (500ms at ProMaxSpeed)
+        motor.move(FWD, ProMaxSpeed)
+        matrix.draw_screen(forward)
+        crazy_step_end_ms = time.ticks_add(now, 500)
+        crazy_step = 15
+
+    elif crazy_step == 15:
+        # Quick turn (alternate sides) 300ms
+        if crazy_turn_side == LEFT:
+            motor.move(LEFT, Max_Speed)
+            matrix.draw_screen(left)
+            berry_horn(200)
+        else:
+            motor.move(RIGHT, Max_Speed)
+            matrix.draw_screen(right)
+            berry_horn(300)
+
+        crazy_step_end_ms = time.ticks_add(now, 300)
+        crazy_step = 16
+
+    elif crazy_step == 16:
+        # Stop and toggle turn side for next cycle
+        motor.move(STOP, 0)
+        crazy_turn_side = RIGHT if crazy_turn_side == LEFT else LEFT
+        crazy_step = 0
+        crazy_step_end_ms = time.ticks_add(now, 500)  # Brief pause before restarting
+
+
 def buttonInterruptHandler(event):    # Interrupt event, that will work when button is pressed
     global berryMode, lastButtonState, button_last_irq_ms
     global button_press_start_ms, pending_soft_reset, pending_bootloader
@@ -827,9 +1002,323 @@ def show_idle_mode_icon():
     except:
         pass
 
+def show_music_mode_icon():
+    try:
+        matrix.draw_screen(rotate_icon_clockwise(music))
+    except:
+        pass
+
+def rotate_icon_clockwise(icon):
+    # 5x5 ikon buffer'ini saat yonunde 90 derece dondurur.
+    rotated = [0, 0, 0, 0, 0]
+    for row in range(5):
+        new_row = 0
+        for col in range(5):
+            src_row = 4 - col
+            src_col = row
+            if icon[src_row] & (1 << (4 - src_col)):
+                new_row |= (1 << (4 - col))
+        rotated[row] = new_row
+    return rotated
+
+def get_digit_from_ir(code):
+    if is_zero_button(code):
+        return 0
+    if code == IR_RX.number_1:
+        return 1
+    if code == IR_RX.number_2:
+        return 2
+    if code == IR_RX.number_3:
+        return 3
+    if code == IR_RX.number_4:
+        return 4
+    if code == IR_RX.number_5:
+        return 5
+    if code == IR_RX.number_6:
+        return 6
+    if code == IR_RX.number_7:
+        return 7
+    if code == IR_RX.number_8:
+        return 8
+    if code == IR_RX.number_9:
+        return 9
+    return -1
+
+def play_music_digit(digit):
+    # Muzik listesi; her biri 3 tekrar calar.
+    melodies = {
+        # 0: Kullanici tarafindan verilen "Kara Kedi" nakarat notalari.
+        # Format: (frekans_hz, sure_ms), bolum aralarinda kisa duraklar var.
+        0: [
+            # Kara kedi girecegine aramiza
+            (494, 150), (494, 150),
+            (554, 150), (587, 150),
+            (659, 125), (659, 125), (659, 125), (659, 125), (587, 250),
+            (554, 200), (494, 200), (466, 400),
+            (0, 220),
+            # Seni soyle alalim, otur yakinimiza
+            (494, 150), (494, 150),
+            (554, 150), (587, 150),
+            (659, 150), (659, 150), (659, 250),
+            (587, 125), (587, 125), (554, 125), (494, 125), (466, 400),
+            (0, 220),
+            # Tum gereksiz arizalar gitti gideli
+            (494, 150), (494, 150), (494, 150), (494, 150),
+            (554, 150), (587, 150), (659, 150), (587, 150),
+            (554, 150), (494, 150), (554, 150), (494, 400),
+            (0, 220),
+            # Gunun en guzeli sen guzeliz iki deli
+            (494, 150), (494, 150), (494, 150), (494, 150), (494, 150),
+            (554, 150), (587, 150), (659, 250),
+            (587, 200), (554, 200), (494, 500),
+        ],
+        # 1: Happy Birthday To You (kisa tema)
+        1: [
+            (262, 220), (262, 220), (294, 420), (262, 420), (349, 420), (330, 700),
+            (262, 220), (262, 220), (294, 420), (262, 420), (392, 420), (349, 700),
+            (262, 220), (262, 220), (523, 420), (440, 420), (349, 420), (330, 420), (294, 700),
+        ],
+        # 2: Jingle Bells (kisa tema)
+        2: [
+            (330, 220), (330, 220), (330, 440),
+            (330, 220), (330, 220), (330, 440),
+            (330, 220), (392, 220), (262, 220), (294, 220), (330, 660),
+            (349, 220), (349, 220), (349, 220), (349, 220),
+            (349, 220), (330, 220), (330, 220), (330, 220),
+            (330, 220), (294, 220), (294, 220), (330, 220), (294, 440), (392, 660),
+        ],
+        # 3: Clap Your Hands (kisa ritmik tema)
+        3: [
+            (262, 220), (262, 220), (294, 220), (330, 220),
+            (330, 220), (294, 220), (262, 220), (247, 220),
+            (262, 220), (262, 220), (294, 220), (330, 220),
+            (294, 440), (262, 700),
+        ],
+    }
+
+    repeat_count = 3
+
+    if digit < 0 or digit > 9:
+        return
+
+    display_digit_icon = rotate_icon_clockwise(digit_icons[digit])
+    matrix.draw_screen(display_digit_icon)
+    if digit not in melodies:
+        buzzer.duty_u16(0)
+        return
+
+    sequence = melodies[digit]
+
+    # Mevcut LED animasyon durumunu sakla; muzik bitince geri yukle.
+    saved_led_state = None
+    saved_chase_led_index = 0
+    saved_color_offset = 0
+    saved_pixel_change_time = 0
+
+    try:
+        saved_led_state = [int(c) for c in rgb.ar]
+        saved_chase_led_index = rgb.chase_led_index
+        saved_color_offset = rgb.color_offset
+        saved_pixel_change_time = rgb.pixel_change_time
+    except:
+        saved_led_state = None
+
+    # Sarkiya gore renk temalari.
+    song_led_palettes = {
+        # 0: Nakarat - mor/turkuaz/sicak gecis
+        0: [
+            (200, 80, 255),
+            (80, 220, 255),
+            (255, 170, 70),
+            (255, 90, 190),
+            (110, 255, 160),
+            (140, 120, 255),
+            (255, 215, 110),
+        ],
+        # 1: Happy Birthday - canli cok renkli tema
+        1: [
+            (255, 40, 120),
+            (255, 90, 40),
+            (255, 190, 40),
+            (60, 220, 80),
+            (40, 170, 255),
+            (120, 90, 255),
+            (255, 60, 200),
+        ],
+        # 2: Jingle Bells - kirmizi/yesil/noel temasi
+        2: [
+            (255, 40, 40),
+            (40, 220, 70),
+            (255, 255, 255),
+            (220, 30, 30),
+            (30, 180, 50),
+            (255, 240, 180),
+            (180, 20, 20),
+        ],
+        # 3: Clap Your Hands - mavi/sari ritmik
+        3: [
+            (40, 120, 255),
+            (255, 220, 40),
+            (30, 180, 255),
+            (255, 180, 30),
+            (70, 90, 255),
+            (255, 245, 120),
+            (40, 150, 230),
+        ],
+    }
+
+    default_led_palette = [
+        (255, 40, 40),
+        (255, 130, 30),
+        (255, 220, 30),
+        (40, 255, 90),
+        (30, 180, 255),
+        (120, 80, 255),
+        (255, 60, 170),
+    ]
+
+    led_palette = song_led_palettes.get(digit, default_led_palette)
+
+    # Sarki hizina gore blink profili.
+    # Deger buyudukce blink daha yavas olur.
+    song_blink_factor = {
+        0: 0.40,  # Nakarat: orta-hizli
+        1: 0.58,  # Happy Birthday: daha yumusak
+        2: 0.36,  # Jingle Bells: daha hizli
+        3: 0.44,  # Clap Your Hands: orta-hizli
+    }
+    song_gap_blink_ms = {
+        0: 72,
+        1: 95,
+        2: 65,
+        3: 78,
+    }
+
+    blink_factor = song_blink_factor.get(digit, 0.42)
+    gap_blink_ms = song_gap_blink_ms.get(digit, 80)
+    per_note_silence_ratio = 0.30 if digit == 0 else 0.0
+
+    def show_music_leds(palette_index, led_on):
+        try:
+            if not led_on:
+                rgb.pixels_fill((0, 0, 0))
+                rgb.pixels_show()
+                return
+
+            base = palette_index % len(led_palette)
+            for i in range(rgb.num_leds):
+                color = led_palette[(base + i) % len(led_palette)]
+                rgb.pixels_set(i, color)
+            rgb.pixels_show()
+        except:
+            pass
+
+    blink_color_shift = 0
+    rotate_colors_each_blink = (digit == 1)
+
+    for _ in range(repeat_count):
+        note_index = 0
+        for freq, duration_ms in sequence:
+            if freq <= 0:
+                buzzer.duty_u16(0)
+            else:
+                try:
+                    buzzer.freq(freq)
+                    buzzer.duty_u16(21000)
+                except:
+                    pass
+
+            note_blink_ms = int(duration_ms * blink_factor)
+            if note_blink_ms < 45:
+                note_blink_ms = 45
+            elif note_blink_ms > 180:
+                note_blink_ms = 180
+
+            elapsed = 0
+            led_phase_on = True
+            next_led_toggle_ms = 0
+            while elapsed < duration_ms:
+                feed_watchdog()
+                matrix.draw_screen(display_digit_icon)
+                if elapsed >= next_led_toggle_ms:
+                    phase_index = note_index + digit
+                    if rotate_colors_each_blink:
+                        phase_index += blink_color_shift
+                        blink_color_shift += 1
+                    show_music_leds(phase_index, led_phase_on)
+                    led_phase_on = not led_phase_on
+                    next_led_toggle_ms += note_blink_ms
+
+                step = 25
+                time.sleep_ms(step)
+                elapsed += step
+
+            buzzer.duty_u16(0)
+            show_music_leds(note_index + digit, False)
+
+            note_pause_ms = 45
+            if freq > 0 and per_note_silence_ratio > 0.0:
+                note_pause_ms = int(duration_ms * per_note_silence_ratio)
+                if note_pause_ms < 35:
+                    note_pause_ms = 35
+                elif note_pause_ms > 180:
+                    note_pause_ms = 180
+
+            elapsed = 0
+            while elapsed < note_pause_ms:
+                feed_watchdog()
+                matrix.draw_screen(display_digit_icon)
+                time.sleep_ms(15)
+                elapsed += 15
+
+            note_index += 1
+
+        # Tekrarlar arasi mini bosluk.
+        gap_elapsed = 0
+        gap_led_on = True
+        gap_next_toggle_ms = 0
+        while gap_elapsed < 180:
+            feed_watchdog()
+            matrix.draw_screen(display_digit_icon)
+            if gap_elapsed >= gap_next_toggle_ms:
+                phase_index = digit
+                if rotate_colors_each_blink:
+                    phase_index += blink_color_shift
+                    blink_color_shift += 1
+                show_music_leds(phase_index, gap_led_on)
+                gap_led_on = not gap_led_on
+                gap_next_toggle_ms += gap_blink_ms
+            time.sleep_ms(20)
+            gap_elapsed += 20
+
+    buzzer.duty_u16(0)
+
+    # Muzik oncesindeki LED durumunu geri yukle.
+    try:
+        if saved_led_state is not None:
+            for i in range(rgb.num_leds):
+                rgb.ar[i] = saved_led_state[i]
+            rgb.chase_led_index = saved_chase_led_index
+            rgb.color_offset = saved_color_offset
+            rgb.pixel_change_time = saved_pixel_change_time
+
+            if rgb_status == 1:
+                rgb.pixels_show()
+            else:
+                clear_rgb_leds()
+        else:
+            if rgb_status == 1:
+                rgb.color_function(rgb_value)
+            else:
+                clear_rgb_leds()
+    except:
+        if rgb_status == 0:
+            clear_rgb_leds()
+
 def safe_idle_state(show_ir_icon=True):
     global left_turning, right_turning, sumo_mode_active, obstacle_mode_active
-    global flow_mode_active, guard_mode_active
+    global flow_mode_active, guard_mode_active, crazy_mode_active, music_mode_active
+    global music_mode_last_activity_ms
     global obstacle_turn_end_ms, bluetooth_mode, flow_action_end_ms, guard_action_end_ms
     global follow_target_cm, follow_last_distance, follow_stable_count
 
@@ -839,9 +1328,15 @@ def safe_idle_state(show_ir_icon=True):
     obstacle_mode_active = False
     flow_mode_active = False
     guard_mode_active = False
+    crazy_mode_active = False
+    music_mode_active = False
+    music_mode_last_activity_ms = 0
     obstacle_turn_end_ms = 0
     flow_action_end_ms = 0
     guard_action_end_ms = 0
+    crazy_step = 0
+    crazy_step_end_ms = 0
+    crazy_mode_started_ms = 0
     follow_target_cm = FOLLOW_BASE_TARGET_CM
     follow_last_distance = None
     follow_stable_count = 0
@@ -987,6 +1482,7 @@ def toggle_raider_mode():
     global obstacle_mode_active, obstacle_turn_direction, obstacle_turn_end_ms
     global obstacle_state, obstacle_last_toggle_ms
     global raider_mode_started_ms
+    global crazy_mode_active, flow_mode_active, guard_mode_active, sumo_mode_active
     global raider_last_distance, raider_stuck_count, raider_same_dir_count, raider_last_move
     global raider_last_action, raider_last_action_distance
 
@@ -995,6 +1491,11 @@ def toggle_raider_mode():
         if time.ticks_diff(now, obstacle_last_toggle_ms) < OBSTACLE_TOGGLE_COOLDOWN_MS:
             return
         obstacle_last_toggle_ms = now
+        # Raider diğer otomatik modlarla aynı anda calismasin.
+        crazy_mode_active = False
+        flow_mode_active = False
+        guard_mode_active = False
+        sumo_mode_active = False
         obstacle_mode_active = True
         raider_mode_started_ms = now
         obstacle_turn_direction = RIGHT
@@ -1079,6 +1580,33 @@ def toggle_sumo_mode():
         show_idle_mode_icon()
         print("Sumo Mode OFF")
 
+def toggle_crazy_mode():
+    global crazy_mode_active, obstacle_mode_active, flow_mode_active, guard_mode_active, sumo_mode_active
+    global crazy_step, crazy_step_end_ms, crazy_turn_side
+    global crazy_mode_started_ms
+
+    if not crazy_mode_active:
+        obstacle_mode_active = False
+        flow_mode_active = False
+        guard_mode_active = False
+        sumo_mode_active = False
+        crazy_mode_active = True
+        crazy_mode_started_ms = time.ticks_ms()
+        crazy_step = 0
+        crazy_step_end_ms = 0
+        crazy_turn_side = LEFT
+        matrix.draw_screen(crazy)
+        berry_horn(1)
+        print("Crazy Mode ON")
+    else:
+        crazy_mode_active = False
+        crazy_mode_started_ms = 0
+        crazy_step = 0
+        crazy_step_end_ms = 0
+        motor.move(STOP, 0)
+        show_idle_mode_icon()
+        print("Crazy Mode OFF")
+
 def cancel_active_operations(show_icon=True):
     global data_rcvd
     safe_idle_state(show_ir_icon=show_icon)
@@ -1102,13 +1630,50 @@ def remote():
     global flow_mode_active, guard_mode_active, flow_turn_direction, flow_action_end_ms
     global guard_action_end_ms, guard_last_alert_ms
     global obstacle_turn_direction, obstacle_turn_end_ms, obstacle_state, obstacle_last_toggle_ms
-    global raider_mode_started_ms
+    global raider_mode_started_ms, crazy_mode_active, crazy_mode_started_ms, music_mode_active
+    global music_mode_last_activity_ms
     global ok_hold_active, ok_hold_until_ms
     if data_rcvd == True:
         received_code = ir_data
         received_is_repeat = ir_is_repeat
         data_rcvd = False
         ir_is_repeat = False
+
+        if received_code == IR_RX.number_star:
+            if received_is_repeat:
+                return
+            # Müzik moduna girerken hareketleri temizle ve robotu sabitle.
+            cancel_active_operations(show_icon=False)
+            music_mode_active = True
+            music_mode_last_activity_ms = time.ticks_ms()
+            motor.move(STOP, 0)
+            show_music_mode_icon()
+            berry_horn(2)
+            print("Music Mode ON")
+            return
+
+        if received_code == IR_RX.number_sharp:
+            if received_is_repeat:
+                return
+            music_mode_active = False
+            music_mode_last_activity_ms = 0
+            motor.move(STOP, 0)
+            show_idle_mode_icon()
+            berry_horn(3)
+            print("Movement Mode ON")
+            return
+
+        if music_mode_active:
+            if received_is_repeat:
+                return
+            music_mode_last_activity_ms = time.ticks_ms()
+            digit = get_digit_from_ir(received_code)
+            if digit >= 0:
+                play_music_digit(digit)
+                show_music_mode_icon()
+            else:
+                show_music_mode_icon()
+            return
 
         # Mod toggle tuşlarını her zaman önce işle.
         if is_zero_button(received_code):
@@ -1143,8 +1708,18 @@ def remote():
                 toggle_sumo_mode()
             return
 
+        if received_code == IR_RX.number_4:
+            if received_is_repeat:
+                # Bazi kumandalarda ikinci 4 basisi sadece REPEAT donebilir.
+                if crazy_mode_active and time.ticks_diff(time.ticks_ms(), crazy_mode_started_ms) >= CRAZY_REPEAT_OFF_MIN_MS:
+                    toggle_crazy_mode()
+                return
+            if allow_mode_toggle(IR_RX.number_4):
+                toggle_crazy_mode()
+            return
+
         # Aktif moddayken diğer tuşlar tüm otomatik modları güvenli kapatır.
-        if obstacle_mode_active or flow_mode_active or guard_mode_active or sumo_mode_active:
+        if obstacle_mode_active or flow_mode_active or guard_mode_active or sumo_mode_active or crazy_mode_active:
             cancel_active_operations(show_icon=True)
             return
 
@@ -1175,12 +1750,6 @@ def remote():
         elif received_code == IR_RX.number_ok:
             matrix.draw_screen(smile)
             berry_horn(1)
-        elif received_code == IR_RX.number_star:
-            matrix.draw_screen(yes)
-            berry_horn(2)
-        elif received_code == IR_RX.number_sharp:
-            matrix.draw_screen(no)
-            berry_horn(3)
         elif received_code == IR_RX.number_1:
             matrix.draw_screen(left)
             left_turning = False
@@ -1244,10 +1813,6 @@ def remote():
 
             buzzer.duty_u16(0)
             motor.move(STOP,0)
-        elif received_code == IR_RX.number_4:
-            matrix.draw_screen(heart)
-            berry_horn(2)
-            time.sleep_ms(1000)
         elif received_code == IR_RX.number_6:
             matrix.draw_screen(sad)
             berry_horn(3)
@@ -1497,10 +2062,22 @@ while True:
                 follow_mode_step()
             elif guard_mode_active:
                 guard_mode_step()
+            elif crazy_mode_active:
+                crazy_mode_step()
 
-            if left_turning or right_turning or sumo_mode_active or obstacle_mode_active or flow_mode_active or guard_mode_active:
+            if music_mode_active and music_mode_last_activity_ms > 0:
+                if time.ticks_diff(time.ticks_ms(), music_mode_last_activity_ms) >= MUSIC_MODE_IDLE_TIMEOUT_MS:
+                    music_mode_active = False
+                    music_mode_last_activity_ms = 0
+                    motor.move(STOP, 0)
+                    show_idle_mode_icon()
+                    print("Music Mode timeout -> Movement Mode")
+
+            if left_turning or right_turning or sumo_mode_active or obstacle_mode_active or flow_mode_active or guard_mode_active or crazy_mode_active:
                 # Hareket devam ediyor, LED'leri yanıp söymeye devam et
                 pass
+            elif music_mode_active:
+                show_music_mode_icon()
             else:
                 show_idle_mode_icon()
 

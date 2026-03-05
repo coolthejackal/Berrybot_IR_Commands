@@ -1,25 +1,46 @@
 # Changelog
 
-Bu dosya projedeki önemli değişiklikleri takip eder.
+Bu dosya projedeki onemli degisiklikleri takip eder.
 
 ## [Unreleased]
 
 ### Added
 
-- Sumo mode için detaylı karar/log çıktıları (`[SUMO] ...`)
-- Motor hareket logları (`[MOTOR] move ...`, `[MOTOR] setMotorSpeed ...`)
-- Raider / Follow / Guard modları için iyileştirilmiş toggle akışı
-- Sumo mode ON/OFF toggle davranışı (`8` tuşu)
+- Crazy Mode (`4`) eklendi:
+  - 17 adimli hareket sekansi
+  - `ProMaxSpeed` kullanilan ileri patlama bolumleri
+  - Crazy icon (`zigzag`) gosterimi
+- Music Mode eklendi:
+  - `*` ile Music Mode'a gecis
+  - `#` ile Movement Mode'a donus
+  - Music Mode'da motor hareketleri devre disi
+  - Matrix'te muzik ikonu gosterimi
+- Music Mode melodileri eklendi (3 tekrar):
+  - `1`: Happy Birthday To You
+  - `2`: Jingle Bells
+  - `3`: Clap Your Hands
+- Music Mode sirasinda matrix'te secilen rakamin melodi sonuna kadar gosterimi eklendi.
+- Muzik sirasinda yan RGB LED'ler icin renkli blink efektleri eklendi.
 
 ### Changed
 
-- IR repeat paketlerinin mod toggle davranışına etkisi iyileştirildi
-- Sumo kayıp senaryosu akışı iyileştirildi (bekleme + yeniden başlama ve manuel kapatma)
-- Mode geçişlerinde güvenli duruş ve ikon güncelleme davranışları düzenlendi
+- Raider / Follow / Guard / Sumo / Crazy toggle akislari iyilestirildi.
+- `4` tusu davranisi standardize edildi ve Crazy Mode ON/OFF icin duzenlendi.
+- Raider acilisinda diger otomatik modlar kapatilacak sekilde mod gecisleri duzenlendi.
+- Raider acik yol hareket suresi 3000ms olarak guncellendi.
+- IR repeat etkileri, mod ac/kapat tuslarinda daha guvenilir calisacak sekilde guncellendi.
+- Sumo mode karar ve durum loglari iyilestirildi (`[SUMO] ...`).
 
-## [2026-03-05]
+### Improved
 
-### Added
+- Muzik LED efektleri sarkiya ozel tema renkleri ile zenginlestirildi:
+  - `1`: Sicak/pastel
+  - `2`: Kirmizi-yesil
+  - `3`: Mavi-sari
+- LED blink hizi sarki temposuna gore ayarlanir hale getirildi.
+- Muzik bitisinde RGB LED durumu muzik oncesindeki state'e geri yuklenecek sekilde duzenlendi.
 
-- Proje ilk sürümü GitHub'a aktarıldı
-- `main.py`, `berrybot.py`, `ObstacleAvoidance.py`, `remote.py`, `remote_test.py`
+### Fixed
+
+- Crazy Mode `4` tusu ON/OFF akisinda gorulen tutarsizliklar giderildi.
+- Raider Mode ON durumunda bazi gecislerde ortaya cikan mod cakismalari giderildi.
